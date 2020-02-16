@@ -9,6 +9,7 @@ import argparse
 import os
 import errno
 import subprocess
+import sys
 
 
 def which(program, required=True):
@@ -16,7 +17,8 @@ def which(program, required=True):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-    fpath, fname = os.path.split(program)
+    fpath = os.path.split(program)[0]
+
     if fpath:
         if is_exe(program):
             return program
@@ -44,23 +46,11 @@ def process_file(filename):
     if file == '.DS_Store':
         return
 
-    # do the important stuff here
-    call_list = ['ls', '-alp', filename]
+    echo = which('echo')
+    call_list = [echo, filename]
     subprocess.call(call_list)
 
-
-def process_dir(directory, recursive):
-    ''' recursive into directories. '''
-    for filename in os.listdir(directory):
-        fullname = directory + '/' + filename
-        #process_file(directory + '/' + filename)
-
-        if os.path.isfile(fullname):
-            process_file(fullname)
-
-        if recursive and os.path.isdir(fullname):
-            process_dir(fullname, recursive)
-
+    return
 
 def main():
     ''' do the main thing '''
@@ -75,24 +65,24 @@ def main():
 
     if not args.input:
         parser.print_help()
-        return
+        return 0
 
     for single_input in args.input:
         if not (os.path.isdir(single_input) or os.path.isfile(single_input)):
             print('ERROR: input is not a file or a directory: ' + single_input)
             parser.print_help()
-            return
+            return 1
 
-        absinput = os.path.abspath(single_input)
+        if os.path.isfile(single_input):
+            process_file(single_input)
 
-        if os.path.isdir(absinput):
-            process_dir(absinput, args.recursive)
+        if os.path.isdir(single_input):
+            for root, dirs, files in os.walk(single_input, topdown=True):
+                for name in files:
+                    process_file(os.path.join(root, name))
 
-        if os.path.isfile(absinput):
-            process_file(absinput)
-
-    return
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
